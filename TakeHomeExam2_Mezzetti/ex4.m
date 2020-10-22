@@ -2,8 +2,8 @@
 
 % goal: find the Heston parameters that minimize the root-mean-squared error 
 %       of the differences between the Heston prices and the observed prices
-clc
 clear all
+clc
 
 global Price K T r S                % global variables
 
@@ -14,7 +14,7 @@ Price = Call_20050103(:,1);         % call price
 K = Call_20050103(:,2);             % strikes
 n_days = 252;                       % business days in a year
 T = Call_20050103(:,3)/n_days;      % time to maturity
-ImpliedVol = Call_20050103(:,4);    % implied volatility
+% ImpliedVol = Call_20050103(:,4);    % implied volatility (not needed)
 
 r = 0.015;                      	% risk free interest rate
 S = 1202.10;                        % initial stock prices
@@ -51,12 +51,15 @@ V = x(5);
 global Price K T r S    % global variables
 
 error = 0;
-lenght_price = length(Price);
 
-for i = 1:lenght_price 
+for i = 1:length(Price)
     call_heston_price = Call_Heston(K(i),T(i),r,nu,kappa,sigma,rho,S,V);
     error = error + (Price(i)-call_heston_price)^2;
 end
+
+% square eroor: do not add anything here
+% error = sqrt(error) % root square error
+error = sqrt(mean(error));  % root mean square error
 
 end
 
