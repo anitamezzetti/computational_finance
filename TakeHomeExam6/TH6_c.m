@@ -18,17 +18,14 @@ fprintf('The size of the test X is %d*%d \n', size(Heston_test,1), size(Heston_t
 % define input for fitGPR:
 K_type = 'squaredexponential';
 theta0 = [1 ,0.3];
-bound_theta = [0.001, 0; 5, inf];
+bound_theta = [0.001, 0; 5, 10];
 X = Heston_train;
 y = Heston_price_train;
 X_star = Heston_test;
 
 
-[x,fval,eflag,output] = fitGPR(X, y, K_type, theta0, bound_theta, X_star);
+fitGPR(X, y, K_type, theta0, bound_theta, X_star);
 
-x
-fval
-output
 
 function [Heston_train, Heston_test] = create_X_sets(training_size, testing_size)
 
