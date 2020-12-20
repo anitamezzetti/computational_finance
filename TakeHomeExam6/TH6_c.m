@@ -1,30 +1,90 @@
 % Take Home 6 part c - Anita Mezzetti
 
-clc
-clear all
+warning off;
 
 % define set size
-training_size = 20;
-testing_size = 50;
+training_size = 250;
+testing_size = 500;
 
 % create sets X, y, X*
 [Heston_train, Heston_test] = create_X_sets(training_size, testing_size);
 Heston_price_train = create_y_set(training_size, Heston_train);
 
-fprintf('The size of the training X is %d*%d \n', size(Heston_train,1), size(Heston_train,2))
-fprintf('The size of the training Y is %d*%d \n', size(Heston_price_train,1), size(Heston_price_train,2))
-fprintf('The size of the test X is %d*%d \n', size(Heston_test,1), size(Heston_test,2))
-
-% define input for fitGPR:
-K_type = 'squaredexponential';
-theta0 = [1 ,0.3];
-bound_theta = [0.001, 0; 5, 10];
 X = Heston_train;
 y = Heston_price_train;
 X_star = Heston_test;
 
+% define input for fitGPR:
+%K_type = 'squaredexponential';
+theta0_se = [0.5 ,0.3];
+bound_theta_se = [0.01, 0; 5, 10];
 
-fitGPR(X, y, K_type, theta0, bound_theta, X_star);
+%K_type = 'linear';
+theta0_l = [0.5, 0.5, 0.5];
+bound_theta_l = [0.01, 0.01, 0; 5, 5, 10];
+
+%K_type = 'periodic';
+theta0_p = [0.5 ,0.3, 0.5];
+bound_theta_p = [0.01, 0, 0; 5, 10, 10];
+
+%%% squaredexponential 
+tic
+[max_lik_se, theta_opt_se, m_star_se, K_line_se] =...
+    fitGPR(X, y, 'squaredexponential', theta0_se, bound_theta_se, X_star);
+toc
+fprintf("\n\nSquare Exponential Kernel:")
+fprintf("\nMaxima of marginal likelihood: %.3f ", max_lik_se)
+fprintf("\nOptimal hyper-parameters: sigma0=%.3f, l=%.3f \n",...
+    theta_opt_se(1), theta_opt_se(2))
+% 
+% %%% linear 
+% tic
+% [max_lik_l, theta_opt_l, m_star_l, K_line_l] =...
+%     fitGPR(X, y, 'linearkernel', theta0_l, bound_theta_l, X_star);
+% toc
+% fprintf("\n\nLinear Kernel:")
+% fprintf("\nMaxima of marginal likelihood: %.3f ", max_lik_l)
+% fprintf("\nOptimal hyper-parameters: sigma0=%.3f, sigma1=%.3f, c=%.3f \n",...
+%     theta_opt_l(1), theta_opt_l(2), theta_opt_l(3))
+% 
+% %%% periodic 
+% tic
+% [max_lik_p, theta_opt_p, m_star_p, K_line_p] =...
+%     fitGPR(X, y, 'periodickernel', theta0_p, bound_theta_p, X_star);
+% toc
+% fprintf("\n\nPeriodic Kernel:")
+% fprintf("\nMaxima of marginal likelihood: %.3f ", max_lik_p)
+% fprintf("\nOptimal hyper-parameters: sigma0=%.3f, l=%.3f, p=%.3f \n",...
+%     theta_opt_p(1), theta_opt_p(2), theta_opt_p(3))
+% 
+
+max_lik_l = -100;
+max_lik_p = -100; 
+
+% define the best kernel (max logp)
+if max_lik_p>max_lik_l && max_lik_p>max_lik_se
+    fprintf("\n\n periodickernel is the best kernel \n")
+    y_gpr_test = m_star_p;
+elseif max_lik_se>max_lik_l && max_lik_se>max_lik_p
+    fprintf("\n\n sqrdexp is the best kernel \n")
+    y_gpr_test = m_star_se;
+else
+    fprintf("\n\n linearkernel is the best kernel \n")
+    y_gpr_test = m_star_l;
+end
+
+gprMdl1 = fitrgp(Heston_train,Heston_price_train,'KernelFunction','squaredexponential');
+y_heston_test = predict(gprMdl1,Heston_test);
+
+y_heston_test1 = heston_test(Heston_test, testing_size);
+
+% errors
+mae_error = max(abs(y_gpr_test - y_heston_test));
+aae_error = mean(abs(y_gpr_test - y_heston_test));
+
+% print errors
+fprintf("\nMAE = %.5f \n", mae_error)
+fprintf("AAE = %.5f", aae_error)
 
 
 function [Heston_train, Heston_test] = create_X_sets(training_size, testing_size)
@@ -88,6 +148,26 @@ for i = 1:training_size
     S=1;
     alpha=2;
     Heston_price_train(i,1)=FFT_Heston(kappa,theta,sigma,rho,r ,v0,S,strike,T,alpha);
+end
+
+end
+
+function[Heston_price_test] = heston_test(Heston_test, testing_size)
+
+Heston_price_test=zeros(testing_size,1);
+
+for i = 1:testing_size
+    strike=Heston_test(i,1);
+    T=Heston_test(i,2);
+    r=Heston_test(i,3);
+    kappa=Heston_test(i,4);
+    theta=Heston_test(i,5);
+    rho=Heston_test(i,6);
+    sigma=Heston_test(i,7);
+    v0=Heston_test(i,8);
+    S=1;
+    alpha=2;
+    Heston_price_test(i,1)=FFT_Heston(kappa,theta,sigma,rho,r ,v0,S,strike,T,alpha);
 end
 
 end
