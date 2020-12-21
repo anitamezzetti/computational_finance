@@ -3,8 +3,8 @@
 warning off;
 
 % define set size
-training_size = 250;
-testing_size = 500;
+training_size = 2500;
+testing_size = 5000;
 
 % create sets X, y, X*
 [Heston_train, Heston_test] = create_X_sets(training_size, testing_size);
@@ -16,16 +16,16 @@ X_star = Heston_test;
 
 % define input for fitGPR:
 %K_type = 'squaredexponential';
-theta0_se = [0.5 ,0.3];
+theta0_se = [0.5 ,0.5];
 bound_theta_se = [0.01, 0; 5, 10];
-
-%K_type = 'linear';
-theta0_l = [0.5, 0.5, 0.5];
-bound_theta_l = [0.01, 0.01, 0; 5, 5, 10];
-
-%K_type = 'periodic';
-theta0_p = [0.5 ,0.3, 0.5];
-bound_theta_p = [0.01, 0, 0; 5, 10, 10];
+% 
+% %K_type = 'linear';
+% theta0_l = [0.5, 0.5, 0.5];
+% bound_theta_l = [0.01, 0.01, 0; 5, 5, 10];
+% 
+% %K_type = 'periodic';
+% theta0_p = [0.5 ,0.3, 0.5];
+% bound_theta_p = [0.01, 0, 0; 5, 10, 10];
 
 %%% squaredexponential 
 tic
@@ -36,6 +36,7 @@ fprintf("\n\nSquare Exponential Kernel:")
 fprintf("\nMaxima of marginal likelihood: %.3f ", max_lik_se)
 fprintf("\nOptimal hyper-parameters: sigma0=%.3f, l=%.3f \n",...
     theta_opt_se(1), theta_opt_se(2))
+toc
 % 
 % %%% linear 
 % tic
@@ -58,20 +59,20 @@ fprintf("\nOptimal hyper-parameters: sigma0=%.3f, l=%.3f \n",...
 %     theta_opt_p(1), theta_opt_p(2), theta_opt_p(3))
 % 
 
-max_lik_l = -100;
-max_lik_p = -100; 
 
 % define the best kernel (max logp)
-if max_lik_p>max_lik_l && max_lik_p>max_lik_se
-    fprintf("\n\n periodickernel is the best kernel \n")
-    y_gpr_test = m_star_p;
-elseif max_lik_se>max_lik_l && max_lik_se>max_lik_p
-    fprintf("\n\n sqrdexp is the best kernel \n")
-    y_gpr_test = m_star_se;
-else
-    fprintf("\n\n linearkernel is the best kernel \n")
-    y_gpr_test = m_star_l;
-end
+% if max_lik_p>max_lik_l && max_lik_p>max_lik_se
+%     fprintf("\n\n periodickernel is the best kernel \n")
+%     y_gpr_test = m_star_p;
+% elseif max_lik_se>max_lik_l && max_lik_se>max_lik_p
+%     fprintf("\n\n sqrdexp is the best kernel \n")
+%     y_gpr_test = m_star_se;
+% else
+%     fprintf("\n\n linearkernel is the best kernel \n")
+%     y_gpr_test = m_star_l;
+% end
+
+y_gpr_test = m_star_se;
 
 gprMdl1 = fitrgp(Heston_train,Heston_price_train,'KernelFunction','squaredexponential');
 y_heston_test = predict(gprMdl1,Heston_test);

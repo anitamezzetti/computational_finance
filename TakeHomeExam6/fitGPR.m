@@ -20,14 +20,13 @@ N = size(X,1); % number of rows of X
 
 % sigma^2: 
 
-sigma2_0 = 0.5;
-sigma2_bounds = [0, 5];
+sigma2_0 = 2;
+sigma2_bounds = [0, 10];
 
 % add sigma^2 initial value to initial values 
 theta0(end+1) = sigma2_0;
 % add sigma^2 bound to theta bounds
-bound_theta(1,end+1) = sigma2_bounds(1);
-bound_theta(2,end) = sigma2_bounds(2);
+bound_theta(:,end+1) = sigma2_bounds;
 
 % define inputs for fmicon function:
 A = [];
@@ -39,7 +38,7 @@ ub = bound_theta(2,:);
 nonlcon = [];
 options = optimoptions('fmincon','Display','iter','SpecifyObjectiveGradient',true);
 
-fun = @(theta) to_minimize(theta, X, y, K_type);
+fun = @(theta) to_minimize(theta, X, y, K_type); % fun contains f and g
 
 % perform minimization
 theta_opt = fmincon(fun,theta0,A,b,Aeq,beq,lb,ub,nonlcon,options);
@@ -110,7 +109,7 @@ log_p = marginal_likelihood(K, y, sigma2, len_X);
 
 f = -log_p; % maximize log_p == minimize f
 
-K_sigma = K + sigma2*ones(size(K));
+K_sigma = K + sigma2 * ones(size(K));
 
 %gradiet:
 if strcmp(K_type,'squaredexponential')
@@ -136,20 +135,29 @@ g = [g_K, grad_sigma2];
 
 end
 
-function [a] = derivative_f_sigma2 (X, y, K, sigma0)
+function [result] = derivative_f_sigma2 (X, y, K, sigma0)
 % sigma2 = sigma^2. this function find the d f / d sigma^2, where f = -log p
 N = size(X,1); % number of rows of X
 
-% def syms to use the function diff
-syms sigma2_
+% ATTENTION: this is the first try using diff. This is too long for big matrices, so we calulate
+% the derivative by hand (see notes)
+%
+% % def syms to use the function diff
+% syms sigma2_
+% 
+% f = 0.5 * (y'* inv(K + sigma2_.*ones(size(K)))) * y ...
+%     + 0.5 * log(det(K + sigma2_*ones(size(K)))) + 0.5 * N * log(2*pi);
+% df_dsigma2 = diff(f,sigma2_);
+% 
+% sigma2_= sigma0;
+% % in this way df_dsigma2 is calcluated in sigma0
+% result = double(subs(df_dsigma2));
 
-f = 0.5 * (y'* inv(K + sigma2_.*ones(size(K)))) * y ...
-    + 0.5 * log(det(K + sigma2_*ones(size(K)))) + 0.5 * N * log(2*pi);
-df_dsigma2 = diff(f,sigma2_);
+% derivative by hand (see notes)
+K_inv = inv(K + sigma0.*ones(size(K)));
+der_inv_k = - K_inv * ones(size(K)) * K_inv;
+result = 0.5 * (y' * der_inv_k * y  + trace(inv(K + sigma0.*ones(size(K)))));
 
-sigma2_= sigma0;
-% in this way df_dsigma2 is calcluated in sigma0
-a = double(subs(df_dsigma2));
 end
 
 function[df_dtheta] =  derivative_f_theta(dK, y, K_sigma)
@@ -162,7 +170,11 @@ end
 
 function [log_p] = marginal_likelihood(K, y, sigma2, len_X)
 
-K_sigma = K + sigma2*ones(size(K));
-log_p = -0.5 * y' * (K_sigma\y)  - 0.5 * log(det(K_sigma)) - 0.5 * len_X * log(2*pi);
+K_sigma = K + sigma2 * ones(size(K));
+if det(K_sigma) == 0 %otherwise is log(0) is -Inf
+    log_p = -0.5 * y' * (K_sigma\y) - 0.5 * len_X * log(2*pi);
+else  
+    log_p = -0.5 * y' * (K_sigma\y) - 0.5 * log(det(K_sigma)) - 0.5 * len_X * log(2*pi);
+end
 
 end
