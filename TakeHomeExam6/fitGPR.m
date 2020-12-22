@@ -19,7 +19,6 @@ N = size(X,1); % number of rows of X
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % sigma^2: 
-
 sigma2_0 = 2;
 sigma2_bounds = [0, 10];
 
@@ -71,7 +70,14 @@ elseif strcmp(K_type,'periodickernel')
     K_star_star = periodickernel(X_star, X_star, theta(1), theta(2), theta(3), 1);
 end
 
-Ky = K + sigma2 * ones(size(K));
+Ky = K + sigma2 .* ones(size(K));
+if det(Ky) == 0
+    %fprintf("chol(Ky) does not work if det(KY)=0, however we have the parameters")
+    m_star = 0;
+    K_line = 0;
+    return
+end
+    
 L = chol(Ky); % cholesky factorization
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 3 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,14 +136,13 @@ elseif strcmp(K_type,'periodickernel')
     g_K =[grad_sigma0, grad_l, grad_p];
 end
 
-grad_sigma2 = derivative_f_sigma2 (X, y, K, sigma2);
+grad_sigma2 = derivative_f_sigma2 (y, K, sigma2);
 g = [g_K, grad_sigma2];
 
 end
 
-function [result] = derivative_f_sigma2 (X, y, K, sigma0)
+function [a] = derivative_f_sigma2 (y, K, sigma0)
 % sigma2 = sigma^2. this function find the d f / d sigma^2, where f = -log p
-N = size(X,1); % number of rows of X
 
 % ATTENTION: this is the first try using diff. This is too long for big matrices, so we calulate
 % the derivative by hand (see notes)
@@ -155,9 +160,11 @@ N = size(X,1); % number of rows of X
 
 % derivative by hand (see notes)
 K_inv = inv(K + sigma0.*ones(size(K)));
-der_inv_k = - K_inv * ones(size(K)) * K_inv;
-result = 0.5 * (y' * der_inv_k * y  + trace(inv(K + sigma0.*ones(size(K)))));
+der_inv_k = - K_inv  * K_inv;
 
+a = 0.5 * (y' * der_inv_k * y  + trace(inv(K + sigma0.*ones(size(K)))));
+
+% a = 0.5 * (y' * (K + sigma0.*ones(size(K)))^(-2) * y  + trace(inv(K + sigma0.*ones(size(K)))));
 end
 
 function[df_dtheta] =  derivative_f_theta(dK, y, K_sigma)
@@ -165,6 +172,7 @@ function[df_dtheta] =  derivative_f_theta(dK, y, K_sigma)
 
 df_dtheta = + 0.5 * y' * inv(K_sigma) * dK * (K_sigma\y)...
       + 0.5 * trace(K_sigma\dK);
+  
 % note that we use + and not - becuase - would be log p and f = - log p
 end 
 
@@ -176,5 +184,7 @@ if det(K_sigma) == 0 %otherwise is log(0) is -Inf
 else  
     log_p = -0.5 * y' * (K_sigma\y) - 0.5 * log(det(K_sigma)) - 0.5 * len_X * log(2*pi);
 end
+
+% log_p = -0.5 * y' * (K_sigma\y) - 0.5 * log(det(K_sigma)) - 0.5 * len_X * log(2*pi);
 
 end

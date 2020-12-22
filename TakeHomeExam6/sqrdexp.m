@@ -1,7 +1,6 @@
-function [result] = sqrdexp(XN, XM, sigma0, lengthscale, return_k)
+function [result] = sqrdexp(XN, XM, sigma0, l, return_k)
 % Squared Exponential
 
-l = lengthscale;
 norm = pdist2(XN,XM).^2;
 exp_fun = exp(-(norm)/(2*l^2));
 
