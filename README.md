@@ -3,4 +3,5 @@ This repositorty contains all notebooks done throughout the course Computational
 
 Take Home Exams Grades:
 1) 40/40
-
+2) 20/20
+3) 20/20
